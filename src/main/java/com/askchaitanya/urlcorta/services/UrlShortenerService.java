@@ -6,24 +6,26 @@ import com.askchaitanya.urlcorta.models.DBUrl;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class UrlShortenerService {
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
 
     @Value("${corta.default.short_url_length}")
     private int defaultShortUrlLength;
 
     @Value("${corta.default.expiration_time_in_days}")
     private int defaultExpirationTimeInDays;
+
+    @Autowired
+    DBUrlService dbUrlService;
 
     public Optional<ResponseDTO> shortenUrl(RequestDTO requestDTO) {
         String shortUrl = isShortUrlAlreadyPresent(requestDTO.getCustomAlias())
@@ -35,10 +37,10 @@ public class UrlShortenerService {
                 .alias(shortUrl)
                 .expirationDate(expirationDate)
                 .build();
-        int insertedRows = insertDBUrl(dbUrlPayload.getOriginalUrl(), dbUrlPayload.getAlias(), dbUrlPayload.getExpirationDate());
+        int insertedRows = dbUrlService.insertDBUrl(dbUrlPayload.getOriginalUrl(), dbUrlPayload.getAlias(), dbUrlPayload.getExpirationDate());
         Optional<DBUrl> insertedDBUrlOptional = Optional.empty();
         if (insertedRows > 0) {
-            insertedDBUrlOptional = getDBUrl(dbUrlPayload.getAlias());
+            insertedDBUrlOptional = dbUrlService.getDBUrl(dbUrlPayload.getAlias());
         }
         DBUrl insertedDBUrl;
         if (insertedDBUrlOptional.isPresent()) {
@@ -92,38 +94,11 @@ public class UrlShortenerService {
     }
 
     public Optional<String> getOriginalUrl(String shortUrl) {
-        return getDBUrl(shortUrl).map(DBUrl::getOriginalUrl);
+        return dbUrlService.getDBUrl(shortUrl).map(DBUrl::getOriginalUrl);
     }
 
     private boolean isShortUrlAlreadyPresent(String shortUrl) {
-        return !StringUtils.hasLength(shortUrl) || getDBUrl(shortUrl).isPresent();
-    }
-
-    private int insertDBUrl(String originalUrl, String shortUrl, Date expirationDate) {
-        // use NamedParameterJdbcTemplate
-        String sql = "INSERT INTO blackops.urls (original_url,alias,expiration_date) values (?, ?, ?)";
-        return jdbcTemplate.update(sql, originalUrl, shortUrl, expirationDate);
-    }
-
-    private Optional<DBUrl> getDBUrl(String shortUrl) {
-        String sql = "SELECT * FROM blackops.urls WHERE alias = ?";
-        DBUrl dbUrl;
-        try {
-            dbUrl = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> DBUrl.builder()
-                    .id(UUID.fromString(rs.getString(1)))
-                    .originalUrl(rs.getString(2))
-                    .alias(rs.getString(3))
-                    .createdAt(rs.getTimestamp(4))
-                    .expirationDate(rs.getTimestamp(5))
-                    .build(), shortUrl);
-        } catch (EmptyResultDataAccessException e) {
-            dbUrl = null;
-        }
-        if (Objects.nonNull(dbUrl)) {
-            return Optional.of(dbUrl);
-        } else {
-            return Optional.empty();
-        }
+        return !StringUtils.hasLength(shortUrl) || dbUrlService.getDBUrl(shortUrl).isPresent();
     }
 
 }
