@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/blackops
+    username: blackops
+    password: blackOps
+corta:
+  default:
+    expiration_time_in_days: 7
+    short_url_length: 8
+    redirection_url: https://www.google.com

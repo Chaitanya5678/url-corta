@@ -15,7 +15,7 @@ public class RequestDTO {
     @JsonProperty(value = "custom_alias")
     private String customAlias;
 
-    @JsonProperty(value = "expiration_time_in_days", defaultValue = "1")
+    @JsonProperty(value = "expiration_time_in_days")
     private Integer expirationTimeInDays;
 
 }
